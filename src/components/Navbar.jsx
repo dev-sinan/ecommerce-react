@@ -5,8 +5,8 @@ export default function Navbar() {
   const { totalQuantity } = useSelector(state => state.cart);
 
   return (
-    <nav className="flex justify-between items-center p-4 bg-gray-900 text-white">
-      <Link to="/" className="text-xl font-bold">ShoeStore</Link>
+    <nav className="flex justify-between items-center p-4 absolute top-0 left-0 w-full bg-indigo-950 text-white z-10 ">
+      <Link to="/" className="text-xl font-bold">AUVREX</Link>
       <div className="space-x-4">
         <Link to="/">Home</Link>
         <Link to="/products">Products</Link>
