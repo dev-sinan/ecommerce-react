@@ -22,7 +22,7 @@ export default function Features() {
             />
             <h3 className="text-xl font-semibold mb-2">Fast Delivery</h3>
             <p className="text-gray-700">
-              Get your sneakers delivered to your doorstep quickly and safely.
+              Get your products delivered to your doorstep quickly and safely.
             </p>
           </div>
 
@@ -34,9 +34,9 @@ export default function Features() {
               alt="Quality Shoes"
               className="w-70 h-50 mx-auto mb-4"
             />
-            <h3 className="text-xl font-semibold mb-2">Quality Shoes</h3>
+            <h3 className="text-xl font-semibold mb-2">Quality </h3>
             <p className="text-gray-700">
-              We bring you the best sneaker brands with top-notch materials.
+              We bring you the best brands with top-notch materials.
             </p>
           </div>
 
