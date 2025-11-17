@@ -1,9 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { addToCart } from "../features/cart/cartSlice";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { addCartItem } from "../features/cart/cartSlice";
+import { toast } from "react-toastify";
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -15,7 +14,7 @@ export default function ProductDetails() {
   const [selectedSize, setSelectedSize] = useState("");
   const [showSizeBox, setShowSizeBox] = useState(false);
 
-  // 🟢 Fetch product details
+  // Fetch product details
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -46,7 +45,7 @@ export default function ProductDetails() {
     fetchProduct();
   }, [id]);
 
-  // 🟣 Auto-select first size if available
+  // Auto-select first size if available
   useEffect(() => {
     if (product?.sizes?.length > 0) {
       setSelectedSize(product.sizes[0]);
@@ -61,25 +60,39 @@ export default function ProductDetails() {
     );
   }
 
-  // 🟡 Quantity control
+  // Quantity control
   const handleIncrease = () => setQuantity((q) => q + 1);
   const handleDecrease = () => quantity > 1 && setQuantity((q) => q - 1);
 
-  // 🛒 Add to Cart button click
+  // Add to Cart button click (login check)
   const handleAddToCartClick = () => {
+    const token = localStorage.getItem("token");
+
+    // 🔐 Check if user is logged in
+    if (!token) {
+      toast.warn("Please login first to add products to cart 🛒", {
+        position: "top-center",
+        autoClose: 2000,
+      });
+      localStorage.setItem("redirectAfterLogin", window.location.pathname);
+      setTimeout(() => navigate("/login"), 1500);
+      return;
+    }
+
+    // If logged in
     if (product.sizes && product.sizes.length > 0) {
       setShowSizeBox(true);
     } else {
-      dispatch(
-        addToCart({
-          id: product._id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          size: null,
-          quantity,
-        })
-      );
+      const itemToAdd = {
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        img: product.image,
+        size: "N/A",
+        quantity,
+      };
+
+      dispatch(addCartItem(itemToAdd));
       toast.success("Product added to cart 🛒", {
         position: "top-center",
         autoClose: 2000,
@@ -87,18 +100,31 @@ export default function ProductDetails() {
     }
   };
 
-  // ✅ Confirm Add to Cart (with or without size)
+  // Confirm Add to Cart (with or without size)
   const handleConfirmAddToCart = () => {
-    dispatch(
-      addToCart({
-        id: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        size: selectedSize || "No size selected",
-        quantity,
-      })
-    );
+    const token = localStorage.getItem("token");
+
+    // 🔐 Login check again (safety)
+    if (!token) {
+      toast.warn("Please login first to add products to cart 🛒", {
+        position: "top-center",
+        autoClose: 2000,
+      });
+      localStorage.setItem("redirectAfterLogin", window.location.pathname);
+      setTimeout(() => navigate("/login"), 1500);
+      return;
+    }
+
+    const itemToAdd = {
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      img: product.image,
+      size: selectedSize || "N/A",
+      quantity,
+    };
+
+    dispatch(addCartItem(itemToAdd));
     setShowSizeBox(false);
     toast.success("Product added to cart 🛒", {
       position: "top-center",
@@ -106,7 +132,7 @@ export default function ProductDetails() {
     });
   };
 
-  // 🟢 WhatsApp Buy Now
+  // WhatsApp Buy Now (no login required)
   const handleBuyNow = () => {
     const phoneNumber = "919526539251";
     const total = product.price * quantity;
@@ -122,7 +148,7 @@ export default function ProductDetails() {
     <section className="py-12 bg-white relative">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-          {/* 🖼️ Product Image */}
+          {/* Product Image */}
           <div>
             <img
               src={product.image}
@@ -131,7 +157,7 @@ export default function ProductDetails() {
             />
           </div>
 
-          {/* 📝 Product Details */}
+          {/* Product Details */}
           <div className="space-y-5 text-center md:text-left">
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
               {product.name}
@@ -144,7 +170,7 @@ export default function ProductDetails() {
               comfort, quality, and the modern AUVREX look.
             </p>
 
-            {/*  Size Selector */}
+            {/* Size Selector */}
             {product.sizes?.length > 0 && (
               <div className="mt-4">
                 <p className="font-semibold mb-2">Select Size:</p>
@@ -188,7 +214,7 @@ export default function ProductDetails() {
               Total: ₹{product.price * quantity}
             </div>
 
-            {/*  Buttons */}
+            {/* Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-4">
               <button
                 onClick={handleAddToCartClick}
@@ -215,7 +241,7 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      {/*  Size Popup */}
+      {/* Size Popup */}
       {showSizeBox && product.sizes && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
           <div className="bg-white rounded-xl shadow-xl p-6 w-[90%] sm:w-[450px] relative border border-gray-200">
@@ -253,7 +279,7 @@ export default function ProductDetails() {
             </div>
 
             <div className="text-sm font-bold text-green-600 mb-4">
-              <p>Free Delivery</p>
+              <p>Free Delivery 🚚</p>
             </div>
 
             <div className="flex justify-end gap-4">
@@ -274,8 +300,7 @@ export default function ProductDetails() {
         </div>
       )}
 
-      
-      <ToastContainer />
+  {/* ToastContainer is mounted once in main.jsx */}
     </section>
   );
 }

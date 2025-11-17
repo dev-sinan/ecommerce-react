@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { addToCart } from "../features/cart/cartSlice";
+import { addCartItem } from "../features/cart/cartSlice";
 import { Search } from "lucide-react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,6 +16,9 @@ export default function Products() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { category } = useParams();
+
+
+  const token = localStorage.getItem("token");
 
   // Fetch products
   useEffect(() => {
@@ -60,16 +62,30 @@ export default function Products() {
   const sortedItems = [...filteredItems].sort((a, b) => {
     if (sortOption === "lowToHigh") return a.price - b.price;
     if (sortOption === "highToLow") return b.price - a.price;
-    if (sortOption === "name") return a.name.localeCompare(b.name);
     return 0;
   });
 
+  // Navigate to product details
   const handleGoToDetails = (productId) => {
     navigate(`/product/${productId}`);
   };
 
-  // Add to cart click
+  // Add to cart (with login check)
   const handleOpenModal = (product) => {
+    // 🔥 FINAL FIX → login check using ONLY localStorage token
+    if (!token) {
+      toast.warn("Please login first to add products to cart 🛒", {
+        position: "top-center",
+        autoClose: 2000,
+      });
+
+      localStorage.setItem("redirectAfterLogin", window.location.pathname);
+
+      setTimeout(() => navigate("/login"), 1500);
+      return; // STOP — do not open modal
+    }
+
+    // If logged in → open modal or add directly
     const validSizes = Array.isArray(product.size)
       ? product.size.filter((s) => s && s.trim() !== "")
       : [];
@@ -78,7 +94,15 @@ export default function Products() {
       setSelectedProduct({ ...product, size: validSizes });
       setSelectedSize(validSizes[0]);
     } else {
-      dispatch(addToCart({ ...product, size: "N/A" }));
+      const itemToAdd = {
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        img: product.image,
+        size: "N/A",
+        quantity: 1,
+      };
+      dispatch(addCartItem(itemToAdd));
       toast.success("Product added to cart 🛒", {
         position: "top-center",
         autoClose: 2000,
@@ -86,19 +110,43 @@ export default function Products() {
     }
   };
 
+  // Add to cart from modal
   const handleAddToCart = () => {
-    dispatch(addToCart({ ...selectedProduct, size: selectedSize || "N/A" }));
+    if (!token) {
+      toast.warn("Please login first to add products to cart 🛒", {
+        position: "top-center",
+        autoClose: 2000,
+      });
+      setTimeout(() => navigate("/login"), 1500);
+      return;
+    }
+
+    if (!selectedProduct) return;
+
+    const itemToAdd = {
+      id: selectedProduct._id,
+      name: selectedProduct.name,
+      price: selectedProduct.price,
+      img: selectedProduct.image,
+      size: selectedSize || "N/A",
+      quantity: 1,
+    };
+
+    dispatch(addCartItem(itemToAdd));
     setSelectedProduct(null);
+
     toast.success("Product added to cart 🛒", {
       position: "top-center",
       autoClose: 2000,
     });
   };
 
+  // Buy now
   const handleBuyNow = (productId) => {
     navigate(`/product/${productId}`);
   };
 
+  // Reset filters
   const handleResetFilters = () => {
     setSearchTerm("");
     setMaxPrice(5000);
@@ -107,6 +155,7 @@ export default function Products() {
 
   return (
     <div className="p-6">
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div className="relative w-full sm:w-1/3">
@@ -144,8 +193,8 @@ export default function Products() {
             <option value="default">Sort By</option>
             <option value="lowToHigh">Price: Low to High</option>
             <option value="highToLow">Price: High to Low</option>
-            <option value="name">Name (A–Z)</option>
           </select>
+
           <button
             onClick={handleResetFilters}
             className="text-sm border border-gray-400 rounded-full px-3 py-2 hover:bg-gray-100"
@@ -205,8 +254,8 @@ export default function Products() {
         )}
       </div>
 
-      {/* Size Modal */}
-      {selectedProduct && (
+      {/* Size Modal - Only show if LOGGED IN */}
+      {selectedProduct && token && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-[90%] sm:w-[450px] relative border border-gray-200">
             <div className="flex items-center gap-4 border-b pb-3 mb-3">
@@ -242,7 +291,7 @@ export default function Products() {
               )}
 
             <p className="text-sm text-green-600 font-bold mb-4">
-              Free Delivery
+              Free Delivery 🚚
             </p>
 
             <div className="flex justify-end gap-4">
@@ -252,6 +301,7 @@ export default function Products() {
               >
                 Cancel
               </button>
+
               <button
                 onClick={handleAddToCart}
                 className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-6 py-2 rounded-full"
@@ -263,8 +313,7 @@ export default function Products() {
         </div>
       )}
 
-    
-      <ToastContainer />
+  {/* ToastContainer is mounted once in main.jsx */}
     </div>
   );
 }

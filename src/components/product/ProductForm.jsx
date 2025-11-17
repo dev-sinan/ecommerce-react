@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
-import "react-toastify/dist/ReactToastify.css";
+// toastify CSS is imported once in main.jsx
 
 export default function ProductForm() {
   const [products, setProducts] = useState([]);
@@ -109,7 +109,7 @@ export default function ProductForm() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <ToastContainer position="top-center" autoClose={3000} theme="colored" />
+  {/* ToastContainer is mounted in main.jsx */}
 
       <Formik
         enableReinitialize

@@ -1,84 +1,133 @@
+import { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
-  addToCart,
-  decreaseQuantity,
-  removeFromCart,
-  clearCart,
+  fetchCart,
+  addCartItem,
+  decreaseCartItem,
+  removeCartItem,
+  clearCartFromServer,
 } from "../features/cart/cartSlice";
 
 export default function Cart() {
   const dispatch = useDispatch();
-  const cartItems = useSelector((state) => state.cart.items);
-  const totalItems = useSelector((state) => state.cart.totalItems);
-  const totalPrice = useSelector((state) => state.cart.totalPrice);
+  const { items = [], totalItems = 0, totalPrice = 0, loading, error } =
+    useSelector((state) => state.cart);
 
+  //  Fetch cart on mount
+  useEffect(() => {
+    dispatch(fetchCart());
+  }, [dispatch]);
+
+  //  Safe image handler
+  const getImageUrl = (item) => {
+    if (!item) return "https://via.placeholder.com/150?text=No+Image";
+    const img = item.img || item.image || item.images || null;
+    if (!img) return "https://via.placeholder.com/150?text=No+Image";
+    if (typeof img === "string" && img.startsWith("http")) return img;
+    if (typeof img === "object" && img.url) return img.url;
+    if (Array.isArray(img) && img.length > 0) {
+      if (typeof img[0] === "string") return img[0];
+      if (img[0].url) return img[0].url;
+    }
+    return "https://via.placeholder.com/150?text=No+Image";
+  };
+
+  //  Handle checkout
   const handleCheckout = () => {
-    const phoneNumber = "919526539251"; // change to your WhatsApp number
-
+    const phoneNumber = "919526539251";
     let message = "🛍️ *New Order Details:*\n\n";
-    cartItems.forEach((item) => {
-      message += `👟 *${item.name}*\n`;
+
+    items.forEach((item) => {
+      message += `🛒 *${item.name}*\n`;
       if (item.size) message += `📏 Size: ${item.size}\n`;
       message += `💰 Price: ₹${item.price}\n`;
-      message += `📦 Quantity: ${item.quantity}\n`;
-      message += `🖼️ Image: ${item.image}\n`; // ✅ fixed image field
+      message += `📦 Qty: ${item.quantity}\n`;
+      message += `🖼️ Image: ${getImageUrl(item)}\n`;
       message += `—————————————\n`;
     });
 
-    message += `\n🧾 *Total Items:* ${totalItems}\n💸 *Total Price:* ₹${totalPrice}\n\nPlease confirm my order ✅`;
+    message += `\n🧾 *Total Items:* ${totalItems}\n💸 *Total Price:* ₹${totalPrice}\n✅ Confirm my order`;
 
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-    window.open(whatsappUrl, "_blank"); // ✅ open new tab safely
-    dispatch(clearCart());
+    const encoded = encodeURIComponent(message);
+    window.open(
+      `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encoded}`,
+      "_blank"
+    );
+
+    dispatch(clearCartFromServer());
   };
+
+  //  Handle loading or error states
+  if (loading)
+    return (
+      <div className="p-10 text-center text-gray-600 text-xl">
+        ⏳ Loading your cart...
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="p-10 text-center text-red-600 text-xl">
+        ❌ Error loading cart: {error}
+      </div>
+    );
 
   return (
     <div className="p-6 min-h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6">Your Cart</h1>
+      <h1 className="text-3xl font-bold mb-6">🛒 Your Cart</h1>
 
-      {cartItems.length === 0 ? (
-        <p className="text-gray-700">Your cart is empty.</p>
+      {!items || items.length === 0 ? (
+        <p className="text-gray-700 text-lg">Your cart is empty.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {cartItems.map((item) => (
+            {items.map((item) => (
               <div
-                key={item.id + (item.size || "")}
+                key={`${item.id}_${item.size || "N/A"}`}
                 className="bg-white shadow rounded p-4 flex items-center justify-between"
               >
                 <div className="flex items-center space-x-4">
                   <img
-                    src={item.image} // ✅ fixed here
-                    alt={item.name}
+                    src={getImageUrl(item)}
+                    alt={item.name || "Item"}
                     className="w-20 h-20 object-cover rounded"
+                    onError={(e) =>
+                      (e.target.src =
+                        "https://via.placeholder.com/150?text=No+Image")
+                    }
                   />
                   <div>
-                    <h2 className="font-bold">{item.name}</h2>
-                    <p>₹{item.price}</p>
-                    <p>Quantity: {item.quantity}</p>
+                    <h2 className="font-bold">{item.name || "Unnamed"}</h2>
                     {item.size && (
-                      <p className="text-gray-600">Size: {item.size}</p>
+                      <p className="text-sm text-gray-500">
+                        Size: {item.size}
+                      </p>
                     )}
+                    <p>₹{item.price || 0}</p>
+                    <p>Quantity: {item.quantity || 1}</p>
                   </div>
                 </div>
 
                 <div className="flex flex-col space-y-2">
                   <button
-                    onClick={() => dispatch(addToCart(item))}
-                    className="bg-green-500 hover:bg-green-600 font-bold px-3 py-1 rounded text-white"
+                    onClick={() => dispatch(addCartItem(item))}
+                    className="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-1 rounded"
                   >
                     +
                   </button>
                   <button
-                    onClick={() => dispatch(decreaseQuantity(item.id))}
-                    className="bg-yellow-400 hover:bg-yellow-500 font-bold px-3 py-1 rounded"
+                    onClick={() =>
+                      dispatch(decreaseCartItem({ id: item.id, size: item.size }))
+                    }
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white font-bold px-3 py-1 rounded"
                   >
                     -
                   </button>
                   <button
-                    onClick={() => dispatch(removeFromCart(item.id))}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                    onClick={() =>
+                      dispatch(removeCartItem({ id: item.id, size: item.size }))
+                    }
+                    className="bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-1 rounded"
                   >
                     Remove
                   </button>

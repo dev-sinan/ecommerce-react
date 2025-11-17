@@ -31,20 +31,7 @@ export default function Footer() {
           <h3 className="text-lg font-semibold text-white mb-3">Stay Connected</h3>
           <p className="text-sm mb-3">Subscribe for updates and offers!</p>
           
-          <div className="flex">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="w-full px-3 py-2 rounded-l-lg text-gray-150 outline-none"
-            />
-            <button className="bg-blue-600 px-4 py-2 rounded-r-lg text-white hover:bg-blue-700 transition">
-              Subscribe
-            </button>
-          </div>
-
-      
-
-
+          
           <div className="flex space-x-5 mt-4 text-2xl">
             <a href="#" className="hover:text-blue-500 transition"><FaFacebook /></a>
             <a href="#" className="hover:text-pink-500 transition"><FaInstagram /></a>

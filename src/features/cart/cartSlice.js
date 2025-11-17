@@ -1,195 +1,179 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
-// 🟢 1. Fetch cart from backend
+
+const API_URL = "http://localhost:5000/api/cart";
+
+//  Safe Fetch helper
+const safeFetch = async (url, options = {}) => {
+  try {
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+    return { error: true, message: err.message };
+  }
+};
+
+//  Save cart to localStorage
+const saveToLocal = (state) => {
+  localStorage.setItem("cartItems", JSON.stringify(state.items));
+  localStorage.setItem("cartTotal", JSON.stringify(state.totalItems));
+  localStorage.setItem("cartPrice", JSON.stringify(state.totalPrice));
+};
+
+// Load cart from localStorage
+const loadFromLocal = () => {
+  return {
+    items: JSON.parse(localStorage.getItem("cartItems")) || [],
+    totalItems: JSON.parse(localStorage.getItem("cartTotal")) || 0,
+    totalPrice: JSON.parse(localStorage.getItem("cartPrice")) || 0,
+  };
+};
+
+
 export const fetchCart = createAsyncThunk("cart/fetchCart", async () => {
-  const res = await fetch("http://localhost:5000/api/cart");
-  const data = await res.json();
-  return data;
+  return await safeFetch(API_URL);
 });
 
-// 🟢 2. Add item to backend cart
 export const addCartItem = createAsyncThunk("cart/addCartItem", async (item) => {
-  const res = await fetch("http://localhost:5000/api/cart", {
+  return await safeFetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(item),
   });
-  const data = await res.json();
-  return data;
 });
 
-// 🟡 3. Remove item from backend cart
-export const removeCartItem = createAsyncThunk(
-  "cart/removeCartItem",
-  async (id) => {
-    await fetch(`http://localhost:5000/api/cart/${id}`, { method: "DELETE" });
-    return id;
+export const decreaseCartItem = createAsyncThunk(
+  "cart/decreaseCartItem",
+  async ({ id, size }) => {
+    return await safeFetch(`${API_URL}/decrease`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, size }),
+    });
   }
 );
 
-// 🔴 4. Clear backend cart
+export const removeCartItem = createAsyncThunk(
+  "cart/removeCartItem",
+  async ({ id, size }) => {
+    await safeFetch(`${API_URL}/item`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, size }),
+    });
+    return { id, size };
+  }
+);
+
 export const clearCartFromServer = createAsyncThunk(
   "cart/clearCartFromServer",
   async () => {
-    await fetch("http://localhost:5000/api/cart", { method: "DELETE" });
+    await safeFetch(API_URL, { method: "DELETE" });
     return [];
   }
 );
 
-// 🟢 Local Storage Sync (fallback)
-const savedCart = JSON.parse(localStorage.getItem("cartState"));
-
-const initialState = savedCart || {
-  items: [],
-  totalItems: 0,
-  totalPrice: 0,
-};
-
-const saveToLocalStorage = (state) => {
-  localStorage.setItem("cartState", JSON.stringify(state));
-};
-
-// 🧠 Slice
+// 🔹 Slice
 const cartSlice = createSlice({
   name: "cart",
-  initialState,
-  reducers: {
-    // ✅ Add item logic (fixed)
-    addToCart: (state, action) => {
-      const item = action.payload;
-      const itemId = item._id || item.id;
-      const sizeKey = item.size || "N/A";
-
-      const existing = state.items.find(
-        (i) =>
-          (i._id === itemId || i.id === itemId) &&
-          (i.size || "N/A") === sizeKey
-      );
-
-      if (existing) {
-        existing.quantity += 1;
-      } else {
-        state.items.push({ ...item, id: itemId, size: sizeKey, quantity: 1 });
-      }
-
-      // Totals
-      state.totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
-      state.totalPrice = state.items.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0
-      );
-
-      saveToLocalStorage(state);
-    },
-
-    // 🟡 Decrease Quantity
-    decreaseQuantity: (state, action) => {
-      const id = action.payload;
-      const item = state.items.find((i) => i._id === id || i.id === id);
-
-      if (item && item.quantity > 1) {
-        item.quantity -= 1;
-      } else {
-        state.items = state.items.filter(
-          (i) => i._id !== id && i.id !== id
-        );
-      }
-
-      state.totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
-      state.totalPrice = state.items.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0
-      );
-
-      saveToLocalStorage(state);
-    },
-
-    // 🗑 Remove item
-    removeFromCart: (state, action) => {
-      const id = action.payload;
-      state.items = state.items.filter(
-        (i) => i._id !== id && i.id !== id
-      );
-
-      state.totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
-      state.totalPrice = state.items.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0
-      );
-
-      saveToLocalStorage(state);
-    },
-
-    // 🔄 Clear all
-    clearCart: (state) => {
-      state.items = [];
-      state.totalItems = 0;
-      state.totalPrice = 0;
-      saveToLocalStorage(state);
-    },
+  initialState: {
+    ...loadFromLocal(),
+    loading: false,
+    error: null,
   },
-
-  // 🧩 Backend sync
+  reducers: {},
   extraReducers: (builder) => {
     builder
+      // Fetch cart
+      .addCase(fetchCart.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchCart.fulfilled, (state, action) => {
-        state.items = action.payload || [];
-        state.totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
-        state.totalPrice = state.items.reduce(
-          (sum, i) => sum + i.price * i.quantity,
-          0
-        );
-        saveToLocalStorage(state);
-      })
-
-      .addCase(addCartItem.fulfilled, (state, action) => {
-        const item = action.payload;
-        const itemId = item._id || item.id;
-        const sizeKey = item.size || "N/A";
-
-        const existing = state.items.find(
-          (i) =>
-            (i._id === itemId || i.id === itemId) &&
-            (i.size || "N/A") === sizeKey
-        );
-
-        if (existing) {
-          existing.quantity += item.quantity || 1;
-        } else {
-          state.items.push({ ...item, id: itemId, size: sizeKey, quantity: 1 });
+        state.loading = false;
+        if (action.payload.error) {
+          state.error = action.payload.message;
+          return;
         }
-
-        state.totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
+        state.items = action.payload || [];
+        state.totalItems = state.items.reduce((s, i) => s + (i.quantity || 0), 0);
         state.totalPrice = state.items.reduce(
-          (sum, i) => sum + i.price * i.quantity,
+          (s, i) => s + (i.price || 0) * (i.quantity || 0),
           0
         );
-        saveToLocalStorage(state);
+        saveToLocal(state);
+      })
+      .addCase(fetchCart.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
       })
 
+      //  Add item 
+      .addCase(addCartItem.fulfilled, (state, action) => {
+        if (action.payload.error) return;
+        const item = action.payload;
+        const existing = state.items.find(
+          (i) => i.id === item.id && i.size === item.size
+        );
+        if (existing) {
+          existing.quantity += 1; 
+        } else {
+          state.items.push({ ...item, quantity: 1 }); 
+        }
+        state.totalItems = state.items.reduce((s, i) => s + i.quantity, 0);
+        state.totalPrice = state.items.reduce(
+          (s, i) => s + i.price * i.quantity,
+          0
+        );
+        saveToLocal(state);
+      })
+
+      //  Decrease item 
+      .addCase(decreaseCartItem.fulfilled, (state, action) => {
+        if (action.payload.error) return;
+        const { id, size } = action.meta.arg; 
+        const existing = state.items.find((i) => i.id === id && i.size === size);
+        if (existing) {
+          if (existing.quantity > 1) existing.quantity -= 1;
+          else
+            state.items = state.items.filter(
+              (i) => !(i.id === id && i.size === size)
+            );
+        }
+        state.totalItems = state.items.reduce((s, i) => s + i.quantity, 0);
+        state.totalPrice = state.items.reduce(
+          (s, i) => s + i.price * i.quantity,
+          0
+        );
+        saveToLocal(state);
+      })
+
+      //  Remove item
       .addCase(removeCartItem.fulfilled, (state, action) => {
-        const id = action.payload;
+        const { id, size } = action.payload;
         state.items = state.items.filter(
-          (i) => i._id !== id && i.id !== id
+          (i) => !(i.id === id && i.size === size)
         );
-        state.totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
+        state.totalItems = state.items.reduce((s, i) => s + i.quantity, 0);
         state.totalPrice = state.items.reduce(
-          (sum, i) => sum + i.price * i.quantity,
+          (s, i) => s + i.price * i.quantity,
           0
         );
-        saveToLocalStorage(state);
+        saveToLocal(state);
       })
 
+      //  Clear cart
       .addCase(clearCartFromServer.fulfilled, (state) => {
         state.items = [];
         state.totalItems = 0;
         state.totalPrice = 0;
-        saveToLocalStorage(state);
+        localStorage.removeItem("cartItems");
+        localStorage.removeItem("cartTotal");
+        localStorage.removeItem("cartPrice");
       });
   },
 });
-
-export const { addToCart, decreaseQuantity, removeFromCart, clearCart } =
-  cartSlice.actions;
 
 export default cartSlice.reducer;
