@@ -249,7 +249,7 @@ export default function Products() {
 
         {sortedItems.length === 0 && (
           <p className="text-center col-span-full text-gray-500">
-            loading.....    </p>
+            loading..........    </p>
         )}
       </div>
 
