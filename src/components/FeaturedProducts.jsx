@@ -11,14 +11,14 @@ export default function FeaturedProducts() {
     const res = await fetch("http://localhost:5000/api/products");
     const data = await res.json();
 
-    console.log("🔹 Backend data:", data);
+  
 
-    // ✅ Check if backend returns { products: [...] }
+    //  Check if backend returns 
     const productsArray = Array.isArray(data)
       ? data
       : data.products || [];
 
-    // 🔹 Choose your 4 featured product IDs
+    //  4 featured product IDs
     const favoriteItemIds = [
       "69098ff135c3b80d7fffe721",
       "6909c7c698b0b9c9349e7492",
@@ -26,7 +26,7 @@ export default function FeaturedProducts() {
       "69097ea225bd82c8164ac57a"
     ];
 
-    // ✅ Filter featured products
+    //  Filter featured products
     const filtered = productsArray.filter((item) =>
       favoriteItemIds.includes(item._id)
     );

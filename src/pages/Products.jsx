@@ -249,8 +249,7 @@ export default function Products() {
 
         {sortedItems.length === 0 && (
           <p className="text-center col-span-full text-gray-500">
-            No items found 😕
-          </p>
+            loading.....    </p>
         )}
       </div>
 
@@ -313,7 +312,6 @@ export default function Products() {
         </div>
       )}
 
-  {/* ToastContainer is mounted once in main.jsx */}
     </div>
   );
 }

@@ -10,7 +10,7 @@ export default function Navbar() {
   const dispatch = useDispatch();
 
   const tokenFromState = useSelector((state) => state.user.token);
-  // also check localStorage as a fallback (in case the app reads token there)
+  
   const tokenFromStorage = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const token = tokenFromState || tokenFromStorage;
   const totalItems = useSelector((state) => state.cart.totalItems);
